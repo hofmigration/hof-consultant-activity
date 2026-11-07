@@ -1,0 +1,76 @@
+name: Consultant activity
+
+on:
+  schedule:
+    # 05:35 UTC = 10:35 AM Pakistan time, Monday to Saturday, so the email lands around 11:00.
+    # It reports on yesterday. Monday's report covers Saturday and Sunday (Sunday is the day
+    # off: DAYS_OFF in config.js).
+    - cron: "35 5 * * 1-6"
+  workflow_dispatch:
+    inputs:
+      period:
+        description: "Which days"
+        required: true
+        default: "Yesterday"
+        type: choice
+        options:
+          - Yesterday
+          - Today so far
+          - Last 7 days
+          - This month so far
+          - Last month
+          - Custom dates
+      from_date:
+        description: "Custom dates: first day, YYYY-MM-DD (a date typed here always wins)"
+        required: false
+        default: ""
+        type: string
+      to_date:
+        description: "Custom dates: last day, YYYY-MM-DD (leave empty for one day)"
+        required: false
+        default: ""
+        type: string
+      consultants:
+        description: "all, or names / HubSpot owner ids separated by commas"
+        required: true
+        default: "all"
+        type: string
+      send_email:
+        description: "Email the report"
+        required: true
+        default: true
+        type: boolean
+
+concurrency:
+  group: consultant-activity
+  cancel-in-progress: false
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: npm install --no-audit --no-fund
+      - name: Check the counting rules still work
+        run: node selftest.js
+      - name: Build and send the report
+        run: node report.js
+        env:
+          HUBSPOT_TOKEN: ${{ secrets.HUBSPOT_TOKEN }}
+          RESEND_KEY: ${{ secrets.RESEND_KEY }}
+          PERIOD: ${{ inputs.period }}
+          FROM_DATE: ${{ inputs.from_date }}
+          TO_DATE: ${{ inputs.to_date }}
+          CONSULTANTS: ${{ inputs.consultants }}
+          SEND_EMAIL: ${{ github.event_name == 'schedule' && 'true' || inputs.send_email }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: consultant-activity
+          path: out/
+          retention-days: 7
+          if-no-files-found: ignore
