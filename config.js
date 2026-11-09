@@ -5,8 +5,7 @@
 
 // Who is reported on: the people in these teams, and nobody else. The teams show in this order.
 // Names are written the way you use them; the numbers are their HubSpot owner ids. Someone in two
-// teams (Aliza Ali, Patrecia Haddad) shows under both, and the overall total still counts them
-// once. People who did nothing in the period are not shown. Add, move or remove people here.
+// teams (Aliza Ali) shows under both, and the overall total still counts them once. People who did nothing in the period are not shown. Add, move or remove people here.
 const TEAMS = [
   { name: "Ali Raza Qureshi's Team", members: [
     { id: "83788398",   name: "Ali Raza Qureshi" },
@@ -71,7 +70,6 @@ const TEAMS = [
     { id: "100468532",  name: "Muhammad Rohaan Umer" },
     { id: "97131926",   name: "Insha Ali" },
     { id: "82714205",   name: "Muhammad Jalal Shah" },
-    { id: "76337312",   name: "Patrecia Haddad" },
   ] },
   { name: "Rahul's Team", members: [
     { id: "97417891",   name: "Mariya S" },
