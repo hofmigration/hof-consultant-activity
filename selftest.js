@@ -34,7 +34,7 @@ async function main() {
     }
     const r = roster();
     assert.strictEqual(r.people.length, 55);
-    assert.deepStrictEqual(r.teamsOf["76337312"], ["Wahab's Team", "Waleed's Team"], "Patrecia is in two teams");
+    assert.deepStrictEqual(r.teamsOf["76337312"], ["Waleed's Team"], "Patrecia is in Waleed's Team only");
     assert.deepStrictEqual(r.teamsOf["99731787"], ["Insha's Team", "Khurram's Team"], "Aliza is in two teams");
     assert.strictEqual(r.people.find((p) => p.ownerId === "100679683").name, "Fazal Mehdi", "the team list's name wins");
     assert.ok(!r.people.some((p) => p.ownerId === "101275168"), "Ujala Ali is in no team, so not in the report");
@@ -201,7 +201,9 @@ async function main() {
     assert.ok(!html.includes("—"), "em dash");
     assert.ok(html.includes("Fazal Mehdi") && html.includes("Aleen Naeem") && html.includes("Waleed's Team"), "every team and person listed");
     assert.ok(!html.includes("Not in a team") && !html.includes("Aliyah Nze"), "nobody outside the teams");
-    assert.strictEqual(html.split(">Patrecia Haddad<").length - 1, 3 * 2, "Patrecia shows under both of her teams in all three tables");
+    assert.strictEqual(html.split(">Patrecia Haddad<").length - 1, 3, "Patrecia shows once in each of the three tables");
+    assert.strictEqual(html.split(">Aliza Ali<").length - 1, 3 * 2, "Aliza shows under both of her teams in all three tables");
+    assert.strictEqual(html.split(">Consultant</td>").length - 1, 3 * (TEAMS.length + 1), "the column headings sit above every team, and above the overall total");
     assert.match(subjectFor(rep), /^Consultant activity · Thu 5 Nov · [\d,]+ calls · [\d,]+ emails · [\d,]+ CCL Sent · [\d,]+ Deal Lost$/);
     const multi = { ...rep, period: resolvePeriod({ period: "Last 7 days", now: pkMs("2026-11-06 11:00") }) };
     multi.counts = { ...rep.counts, byDay: multi.period.days.map((d) => ({ day: d, ...sum, active: 55 })) };
@@ -296,6 +298,7 @@ function checkFakeRun(rep, truncate) {
   const html = rep.files.html;
   assert.ok(html.includes("Fazal Mehdi") && html.includes("Fatima Zahid") && html.includes("Ambreen Sayed"));
   assert.ok(html.includes("Ali Raza Qureshi's Team") && html.includes("Wahab's Team"), "team rows");
+  assert.strictEqual(html.split(">Consultant</td>").length - 1, 3 * (3 + 1), "headings above each of the 3 teams shown, and the total, in all three tables");
   assert.ok(!html.includes("Akanksha Yadav") && !html.includes("Jully's Team"), "nobody with no activity, and no empty team");
   assert.ok(html.includes("52 people with no activity that day are not shown."));
   assert.ok(html.includes("Tasks: 1 done, 2 due today, 3 overdue"), "the tasks line");
