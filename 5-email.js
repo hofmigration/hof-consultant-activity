@@ -67,38 +67,46 @@ function numbered(items) {
 }
 
 // A compact table. The number font and right alignment are set once on the table, so a number
-// cell is just <td>12</td>, and zero is pale. A row is a team (its totals), a person under it,
-// a plain row, or a "more in the workbook" line; the overall total goes last.
-const GH = `font:700 9px/1.2 ${SANS};letter-spacing:1px;text-transform:uppercase;color:${C.accent};border-bottom:2px solid ${C.accent};padding-top:2px`;
-const TH = `font:700 9px/1.25 ${SANS};letter-spacing:.4px;text-transform:uppercase;color:${C.soft};border-bottom:1px solid ${C.line}`;
+// cell is just <td>12</td>, and zero is pale. The heading rows (the band and the column names)
+// are written above every team, so each team reads on its own; the overall total goes last.
+const BAND = `font:700 9px/1.2 ${SANS};letter-spacing:1px;text-transform:uppercase;color:${C.accent}`;
+const HEAD = `font:700 9px/1.25 ${SANS};letter-spacing:.4px;text-transform:uppercase;color:${C.soft};border-bottom:1px solid ${C.line}`;
 const TN = `font:600 12px ${SANS};text-align:left`;
 const TP = `font:600 12px ${SANS};text-align:left;padding-left:16px`;
 const TT = `font:800 12px ${SANS};text-align:left;color:${C.accent};white-space:nowrap`;
 const numCell = (v) => (v === "" || v == null ? "<td></td>" : v ? `<td>${n(v)}</td>` : `<td style="color:${C.zero}">0</td>`);
 const boldCell = (v) => (v === "" || v == null ? "<td></td>" : `<td><b>${n(v)}</b></td>`);
-function dataTable({ groups, heads, rows, total }) {
-  const g = groups ? `<tr>${groups.map(([label, span], i) => `<td${span > 1 ? ` colspan="${span}"` : ""}${i ? ' align="center"' : ""} style="${label ? GH + (i > 1 ? ";border-left:6px solid #ffffff" : "") : "border-bottom:2px solid #ffffff"}">${label}</td>`).join("")}</tr>` : "";
-  const h = `<tr>${heads.map((l, i) => `<td style="${TH}${i ? "" : ";text-align:left"}">${l}</td>`).join("")}</tr>`;
+function dataTable({ groups, heads, rows }) {
+  const band = groups ? `<tr style="${BAND}">${groups.map(([label, span], i) => `<td${span > 1 ? ` colspan="${span}"` : ""}${label ? ` style="text-align:center;border-bottom:2px solid ${C.accent}${i > 1 ? ";border-left:6px solid #ffffff" : ""}"` : ""}>${label}</td>`).join("")}</tr>` : "";
+  const head = `<tr style="${HEAD}">${heads.map((l, i) => (i ? `<td>${l}</td>` : `<td style="text-align:left">${l}</td>`)).join("")}</tr>`;
   let z = 0;
   const body = rows.map((r) => {
-    if (r.kind === "team") { z = 0; return `<tr bgcolor="#EEF2FB"><td style="${TT}">${esc(r.name)}</td>${r.cells.map(boldCell).join("")}</tr>`; }
-    if (r.kind === "more") return `<tr><td colspan="${heads.length}" style="font:400 11px ${SANS};color:${C.soft};text-align:left;padding-left:16px">${esc(r.name)}</td></tr>`;
-    return `<tr${z++ % 2 ? ` bgcolor="${C.zebra}"` : ""}><td style="${r.kind === "person" ? TP : TN}">${esc(r.name)}</td>${r.cells.map(numCell).join("")}</tr>`;
+    switch (r.kind) {
+      case "headings": return band + head;
+      case "space": return `<tr><td colspan="${heads.length}" style="height:16px;padding:0"></td></tr>`;
+      case "team": z = 0; return `<tr bgcolor="#EEF2FB"><td style="${TT}">${esc(r.name)}</td>${r.cells.map(boldCell).join("")}</tr>`;
+      case "total": return `<tr bgcolor="#E1E8F8"><td style="${TN};font-weight:800">${esc(r.name)}</td>${r.cells.map(boldCell).join("")}</tr>`;
+      case "more": return `<tr><td colspan="${heads.length}" style="font:400 11px ${SANS};color:${C.soft};text-align:left;padding-left:16px">${esc(r.name)}</td></tr>`;
+      default: return `<tr${z++ % 2 ? ` bgcolor="${C.zebra}"` : ""}><td style="${r.kind === "person" ? TP : TN}">${esc(r.name)}</td>${r.cells.map(numCell).join("")}</tr>`;
+    }
   }).join("");
-  const t = total ? `<tr bgcolor="#E1E8F8"><td style="${TN};font-weight:800">${esc(total.name)}</td>${total.cells.map(boldCell).join("")}</tr>` : "";
-  return `<table role="presentation" width="100%" cellpadding="5" cellspacing="0" style="font:400 13px/1.3 ${NUM};color:${C.ink};border-collapse:collapse;text-align:right">${g}${h}${body}${t}</table>`;
+  return `<table role="presentation" width="100%" cellpadding="5" cellspacing="0" style="font:400 13px/1.3 ${NUM};color:${C.ink};border-collapse:collapse;text-align:right">${body}</table>`;
 }
-// each team's row, then its people (at most perTeam of them, the rest are in the workbook)
-function teamRows(groups, cellsOf, perTeam = Infinity) {
-  return groups.flatMap((g) => {
+// For each team: the headings, the team's totals, then its people (at most perTeam of them, the
+// rest are in the workbook). Then the headings once more over the overall total.
+function teamRows(groups, cellsOf, total, perTeam = Infinity) {
+  const rows = groups.flatMap((g, i) => {
     const shown = g.people.slice(0, perTeam);
     const rest = g.people.length - shown.length;
     return [
+      ...(i ? [{ kind: "space" }] : []),
+      { kind: "headings" },
       { kind: "team", name: g.name, cells: cellsOf(g.total) },
       ...shown.map((p) => ({ kind: "person", name: p.name, cells: cellsOf(p.total) })),
       ...(rest > 0 ? [{ kind: "more", name: `and ${plural(rest, "more person", "more people")} in the workbook` }] : []),
     ];
   });
+  return [...rows, { kind: "space" }, { kind: "headings" }, { kind: "total", name: total.name, cells: cellsOf(total.f) }];
 }
 const foot = (text) => `<div style="font:400 11.5px/1.6 ${SANS};color:${C.soft};margin:9px 0 0">${tidy(text)}</div>`;
 
@@ -160,14 +168,15 @@ function buildEmail(rep, opts = {}) {
       body += sectionHead(label(no++), "Day by day", "The whole team, each day");
       body += dataTable({
         heads: ["Day", "Active", "Calls", "Conn.", "No ans.", "Emails", "Deals touched", "CCL", "Lost"],
-        rows: counts.byDay.map((d) => ({ kind: "row", name: fmtDayShort(d.day), cells: [d.active, d.calls, d.connected, d.noAnswer, d.emails, d.dealsTouched, d.ccl, d.lost] })),
-        total: { name: "Total", cells: ["", team.calls, team.connected, team.noAnswer, team.emails, team.dealsTouched, team.ccl, team.lost] },
+        rows: [{ kind: "headings" },
+          ...counts.byDay.map((d) => ({ kind: "row", name: fmtDayShort(d.day), cells: [d.active, d.calls, d.connected, d.noAnswer, d.emails, d.dealsTouched, d.ccl, d.lost] })),
+          { kind: "total", name: "Total", cells: ["", team.calls, team.connected, team.noAnswer, team.emails, team.dealsTouched, team.ccl, team.lost] }],
       });
     }
 
     const whole = "Each consultant over the whole period, by team";
     const nc = counts.notCounted || {};
-    const table = (spec) => dataTable({ ...spec, rows: teamRows(counts.groups, spec.cellsOf, perTeam), total: { name: "All consultants", cells: spec.cellsOf(team) } });
+    const table = (spec) => dataTable({ ...spec, rows: teamRows(counts.groups, spec.cellsOf, { name: "All consultants", f: team }, perTeam) });
 
     body += sectionHead(label(no++), "Calls and No Answer leads", period.single ? "Raw calls, the contacts and deals on them, and leads in No Answer" : whole);
     body += table({
