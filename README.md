@@ -75,10 +75,11 @@ A day takes about 2 to 4 minutes. A whole month takes longer (10 to 20 minutes).
 ## How each number is counted
 
 - **Days** run midnight to midnight, Pakistan time.
-- **Teams** are the nine teams in `config.js`, in that order. Someone in two teams (Aliza Ali,
-  Patrecia Haddad) shows under both, and the *All consultants* row counts them once. A team row adds
-  up the people under it. Anyone with no activity in the period is left out, and so is a team with
-  nobody left; the email says how many people were left out.
+- **Teams** are the nine teams in `config.js`, in that order. In the email every team has its own
+  column headings, then the team's totals, then its people. Someone in two teams (Aliza Ali) shows
+  under both, and the *All consultants* row counts them once. A team row adds up the people under it.
+  Anyone with no activity in the period is left out, and so is a team with nobody left; the email says
+  how many people were left out.
 - **No Answer leads** are counted when the report runs: contacts the consultant owns whose Lead Stage
   is *No Answer* right now, created in HubSpot from 1 January 2026 to that moment. The start date is
   `NO_ANSWER_LEADS_FROM` in `config.js` (change it to `2027-01-01` next year if you want a fresh
