@@ -13,6 +13,10 @@ const { pickConsultants, roster } = require("./2-collect");
 const C = require("./3-count");
 const { buildEmail, fitEmail, subjectFor } = require("./5-email");
 
+// How many people the teams in config.js hold (someone in two teams counted once). The checks
+// below use this rather than a fixed number, so adding or removing someone there needs no change here.
+const IN_TEAMS = new Set(TEAMS.flatMap((t) => t.members.map((m) => String(m.id)))).size;
+
 let passed = 0;
 const failures = [];
 async function test(name, fn) {
@@ -25,17 +29,20 @@ const pkMs = (s) => Date.parse(pk(s));
 
 async function main() {
   // ---------- who is in the report: the teams, and nobody else ----------
-  await test("the teams: real owner ids, nobody twice in one team, 55 people in all", () => {
-    assert.strictEqual(TEAMS.length, 9);
+  await test("the teams: real owner ids, nobody twice in one team, everyone in them reported once", () => {
+    assert.ok(TEAMS.length, "there are no teams");
     for (const t of TEAMS) {
       assert.ok(t.members.length, `${t.name} has nobody`);
       assert.strictEqual(new Set(t.members.map((m) => m.id)).size, t.members.length, `${t.name} lists someone twice`);
       for (const m of t.members) assert.match(m.id, /^\d+$/, `${m.name} has no owner id`);
     }
     const r = roster();
-    assert.strictEqual(r.people.length, 55);
+    assert.strictEqual(r.people.length, IN_TEAMS);
+    for (const p of r.people) {
+      const listedIn = TEAMS.filter((t) => t.members.some((m) => String(m.id) === p.ownerId)).map((t) => t.name);
+      assert.deepStrictEqual(r.teamsOf[p.ownerId], listedIn, `${p.name} shows under every team that lists them`);
+    }
     assert.deepStrictEqual(r.teamsOf["76337312"], ["Waleed's Team"], "Patrecia is in Waleed's Team only");
-    assert.deepStrictEqual(r.teamsOf["99731787"], ["Insha's Team", "Khurram's Team"], "Aliza is in two teams");
     assert.strictEqual(r.people.find((p) => p.ownerId === "100679683").name, "Fazal Mehdi", "the team list's name wins");
     assert.ok(!r.people.some((p) => p.ownerId === "101275168"), "Ujala Ali is in no team, so not in the report");
   });
@@ -91,19 +98,21 @@ async function main() {
   // ---------- choosing consultants ----------
   const hub = [{ ownerId: "86250521", name: "Ali Raza" }, { ownerId: "100552613", name: "Ali Raza" }, { ownerId: "100679683", name: "Muhammad Fazal Mehdi" }, { ownerId: "303029285", name: "Waleed Bin Zaman" }];
   await test("all, a first name, an id, a team, a HubSpot name", () => {
-    assert.strictEqual(pickConsultants("all", hub).found.length, 55);
-    assert.strictEqual(pickConsultants("", hub).found.length, 55);
+    assert.strictEqual(pickConsultants("all", hub).found.length, IN_TEAMS);
+    assert.strictEqual(pickConsultants("", hub).found.length, IN_TEAMS);
     assert.deepStrictEqual(pickConsultants("Fazal", hub).found.map((c) => c.ownerId), ["100679683"]);
     assert.deepStrictEqual(pickConsultants("84172062, fazal", hub).found.map((c) => c.name), ["Fatima Zahid", "Fazal Mehdi"]);
     assert.deepStrictEqual(pickConsultants("Ali Raza Shoukat", hub).found.map((c) => c.ownerId), ["100552613"]);
     assert.deepStrictEqual(pickConsultants("Ali Raza", hub).found.map((c) => c.ownerId), ["100552613"], "HubSpot's name finds the team member first");
     assert.deepStrictEqual(pickConsultants("Muhammad Fazal Mehdi", hub).found.map((c) => c.name), ["Fazal Mehdi"]);
     assert.deepStrictEqual(pickConsultants("ali raza qureshi", hub).found.map((c) => c.ownerId), ["83788398"]);
+    const team = (name) => TEAMS.find((t) => t.name === name).members;
     const fahad = pickConsultants("Fahad Butt's Team", hub).found.map((c) => c.ownerId);
-    assert.strictEqual(fahad.length, 8);
+    assert.deepStrictEqual(fahad, team("Fahad Butt's Team").map((m) => m.id), "a team brings in everyone listed in it");
     assert.deepStrictEqual(pickConsultants("fahad team", hub).found.map((c) => c.ownerId), fahad);
-    assert.deepStrictEqual(pickConsultants("Insha team", hub).found.map((c) => c.name), ["Insha Khan", "Zunera Saghar", "Iqra Jameel", "Aliza Ali"]);
-    assert.strictEqual(pickConsultants("Insha team, Khurram team", hub).found.length, 8, "Aliza Ali once");
+    const insha = team("Insha's Team");
+    assert.deepStrictEqual(pickConsultants("Insha team", hub).found.map((c) => c.name), insha.map((m) => m.name));
+    assert.strictEqual(pickConsultants(`Insha team, ${insha[insha.length - 1].id}`, hub).found.length, insha.length, "someone picked twice is listed once");
   });
   await test("an unclear or unknown name stops the run", () => {
     assert.match(pickConsultants("Raza", hub).problems.join(" "), /matches 2 people/);
@@ -184,7 +193,7 @@ async function main() {
   });
 
   // ---------- the email at full size ----------
-  await test("the email for all 55 people busy at once fits Gmail, by team, with no em dashes", () => {
+  await test("the email with everyone in the teams busy at once fits Gmail, by team, with no em dashes", () => {
     const period = resolvePeriod({ now: pkMs("2026-11-06 11:00") });
     const blank = C.flat(C.blank());
     const peopleRows = roster().people.map((o, i) => {
@@ -194,7 +203,7 @@ async function main() {
     const sum = {}; for (const p of peopleRows) for (const [k, v] of Object.entries(p.total)) sum[k] = (sum[k] || 0) + v;
     const groups = C.groupByTeam(peopleRows, TEAMS);
     assert.deepStrictEqual(groups.map((g) => g.name), TEAMS.map((t) => t.name));
-    const rep = { period, now: pkMs("2026-11-06 10:40"), counts: { people: peopleRows, team: sum, groups, hidden: 0, byDay: [{ day: period.days[0], ...sum, active: 55 }], detail: {} }, world: { allSelected: true, warnings: [], openTasks: { available: true }, naLeads: { available: true } } };
+    const rep = { period, now: pkMs("2026-11-06 10:40"), counts: { people: peopleRows, team: sum, groups, hidden: 0, byDay: [{ day: period.days[0], ...sum, active: IN_TEAMS }], detail: {} }, world: { allSelected: true, warnings: [], openTasks: { available: true }, naLeads: { available: true } } };
     const html = fitEmail(rep);
     assert.ok(Buffer.byteLength(html) <= SETTINGS.EMAIL_MAX_BYTES, `${Buffer.byteLength(html)} bytes`);
     assert.ok(!html.includes("in the workbook</td>"), "everyone fits without trimming");
@@ -202,11 +211,15 @@ async function main() {
     assert.ok(html.includes("Fazal Mehdi") && html.includes("Aleen Naeem") && html.includes("Waleed's Team"), "every team and person listed");
     assert.ok(!html.includes("Not in a team") && !html.includes("Aliyah Nze"), "nobody outside the teams");
     assert.strictEqual(html.split(">Patrecia Haddad<").length - 1, 3, "Patrecia shows once in each of the three tables");
-    assert.strictEqual(html.split(">Aliza Ali<").length - 1, 3 * 2, "Aliza shows under both of her teams in all three tables");
     assert.strictEqual(html.split(">Consultant</td>").length - 1, 3 * (TEAMS.length + 1), "the column headings sit above every team, and above the overall total");
+    // someone listed in two teams shows under both: Patrecia is added to the first team here to check it
+    const twoTeams = TEAMS.map((t, i) => (i ? t : { ...t, members: [...t.members, { id: "76337312", name: "Patrecia Haddad" }] }));
+    const html2 = fitEmail({ ...rep, counts: { ...rep.counts, groups: C.groupByTeam(peopleRows, twoTeams) } });
+    assert.ok(!html2.includes("in the workbook</td>"), "everyone still fits without trimming");
+    assert.strictEqual(html2.split(">Patrecia Haddad<").length - 1, 3 * 2, "someone in two teams shows under both, in all three tables");
     assert.match(subjectFor(rep), /^Consultant activity · Thu 5 Nov · [\d,]+ calls · [\d,]+ emails · [\d,]+ CCL Sent · [\d,]+ Deal Lost$/);
     const multi = { ...rep, period: resolvePeriod({ period: "Last 7 days", now: pkMs("2026-11-06 11:00") }) };
-    multi.counts = { ...rep.counts, byDay: multi.period.days.map((d) => ({ day: d, ...sum, active: 55 })) };
+    multi.counts = { ...rep.counts, byDay: multi.period.days.map((d) => ({ day: d, ...sum, active: IN_TEAMS })) };
     assert.ok(Buffer.byteLength(fitEmail(multi)) <= SETTINGS.EMAIL_MAX_BYTES);
     assert.ok(buildEmail(multi).includes("Day by day"));
   });
@@ -288,7 +301,7 @@ function checkFakeRun(rep, truncate) {
   assert.strictEqual(t.naLeads, 3, "No Answer leads: Fazal's three created since 1 Jan 2026 (just after midnight Pakistan time counts; 31 Dec does not)");
   assert.deepStrictEqual(rep.counts.groups.map((g) => [g.name, g.people.map((p) => p.name)]),
     [["Ali Raza Qureshi's Team", ["Fazal Mehdi"]], ["Rabbiya Jilani's Team", ["Fatima Zahid"]], ["Wahab's Team", ["Ambreen Sayed"]]]);
-  assert.strictEqual(rep.counts.hidden, 52);
+  assert.strictEqual(rep.counts.hidden, IN_TEAMS - 3, "everyone but the 3 who worked is left out");
   // the lead stage list shows the workflow's change on a contact Fazal called, but does not count it
   const k3 = rep.counts.detail.stages.find((s) => s.contactId === "903");
   assert.ok(k3 && !k3.credit && k3.how === "automatic", "workflow change listed, not counted");
@@ -300,7 +313,7 @@ function checkFakeRun(rep, truncate) {
   assert.ok(html.includes("Ali Raza Qureshi's Team") && html.includes("Wahab's Team"), "team rows");
   assert.strictEqual(html.split(">Consultant</td>").length - 1, 3 * (3 + 1), "headings above each of the 3 teams shown, and the total, in all three tables");
   assert.ok(!html.includes("Akanksha Yadav") && !html.includes("Jully's Team"), "nobody with no activity, and no empty team");
-  assert.ok(html.includes("52 people with no activity that day are not shown."));
+  assert.ok(html.includes(`${IN_TEAMS - 3} people with no activity that day are not shown.`));
   assert.ok(html.includes("Tasks: 1 done, 2 due today, 3 overdue"), "the tasks line");
   assert.ok(html.includes("3 No Answer leads since 1 Jan") && html.includes("Fazal Mehdi 3"), "the No Answer leads line");
   assert.ok(!html.includes("—"));
