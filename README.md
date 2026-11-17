@@ -2,7 +2,7 @@
 
 Every morning at about **11:00 (Pakistan time), Monday to Saturday**, you get one email with what
 each consultant did in HubSpot the day before, **by team**. Monday's email covers Saturday and Sunday.
-It reports on the people in the nine teams in `config.js` (55 people), and nobody else. People with no
+It reports on the people in the nine teams in `config.js` (56 people), and nobody else. People with no
 activity are not shown.
 
 For each consultant, each day:
@@ -76,7 +76,7 @@ A day takes about 2 to 4 minutes. A whole month takes longer (10 to 20 minutes).
 
 - **Days** run midnight to midnight, Pakistan time.
 - **Teams** are the nine teams in `config.js`, in that order. In the email every team has its own
-  column headings, then the team's totals, then its people. Someone in two teams (Aliza Ali) shows
+  column headings, then the team's totals, then its people. Someone listed in two teams shows
   under both, and the *All consultants* row counts them once. A team row adds up the people under it.
   Anyone with no activity in the period is left out, and so is a team with nobody left; the email says
   how many people were left out.
