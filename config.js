@@ -4,8 +4,8 @@
 // The same rules are repeated in the "How it was counted" tab of every workbook.
 
 // Who is reported on: the people in these teams, and nobody else. The teams show in this order.
-// Names are written the way you use them; the numbers are their HubSpot owner ids. Someone in two
-// teams (Aliza Ali) shows under both, and the overall total still counts them once. People who did nothing in the period are not shown. Add, move or remove people here.
+// Names are written the way you use them; the numbers are their HubSpot owner ids. Someone listed in
+// two teams shows under both, and the overall total still counts them once. People who did nothing in the period are not shown. Add, move or remove people here.
 const TEAMS = [
   { name: "Ali Raza Qureshi's Team", members: [
     { id: "83788398",   name: "Ali Raza Qureshi" },
@@ -16,6 +16,7 @@ const TEAMS = [
     { id: "100552613",  name: "Ali Raza Shoukat" },           // "Ali Raza" in HubSpot
     { id: "100552645",  name: "Abdullah Khalil" },
     { id: "100679717",  name: "Abdullah Naseer" },
+    { id: "103325034",  name: "Laiba Khurram" },
   ] },
   { name: "Rabbiya Jilani's Team", members: [
     { id: "85714760",   name: "Rabbiya Jilani" },
@@ -27,6 +28,7 @@ const TEAMS = [
     { id: "101182326",  name: "Affan Wasti" },
     { id: "100679600",  name: "Affan Bin Kashif" },
     { id: "100549686",  name: "Usman Aslam" },
+    { id: "104243674",  name: "Saad Aman" },
   ] },
   { name: "Fahad Butt's Team", members: [
     { id: "75852018",   name: "Fahad Butt" },
@@ -37,6 +39,7 @@ const TEAMS = [
     { id: "100679666",  name: "Adil Hassan" },
     { id: "100679575",  name: "Mehran Ali" },
     { id: "100679501",  name: "Noor Ul Ain" },
+    { id: "103324925",  name: "Esha Rashid" },
   ] },
   { name: "Insha's Team", members: [
     { id: "79152876",   name: "Insha Khan" },
@@ -45,11 +48,7 @@ const TEAMS = [
     { id: "99731787",   name: "Aliza Ali" },
   ] },
   { name: "Khurram's Team", members: [
-    { id: "99731787",   name: "Aliza Ali" },
     { id: "86887642",   name: "Khurram Iqbal" },
-    { id: "99217082",   name: "Uwais Ali" },
-    { id: "96753780",   name: "Janice Noronha" },
-    { id: "98333925",   name: "Mahesh Nanda" },
   ] },
   { name: "Jully's Team", members: [
     { id: "93415418",   name: "Sneha Nair" },
@@ -70,6 +69,7 @@ const TEAMS = [
     { id: "100468532",  name: "Muhammad Rohaan Umer" },
     { id: "97131926",   name: "Insha Ali" },
     { id: "82714205",   name: "Muhammad Jalal Shah" },
+    { id: "96753780",   name: "Janice Noronha" },
   ] },
   { name: "Rahul's Team", members: [
     { id: "97417891",   name: "Mariya S" },
